@@ -26,6 +26,15 @@ public class PluginConfiguration : BasePluginConfiguration
 
     public int TimeoutSeconds { get; set; } = 120;
 
+    /// <summary>Spacing of stored cumulative summaries, in minutes of runtime.</summary>
+    public int CheckpointMinutes { get; set; } = 5;
+
+    /// <summary>Generate checkpoints in the background (on playback start and via a scheduled task).</summary>
+    public bool PrecomputeEnabled { get; set; } = true;
+
+    /// <summary>How many checkpoints beyond the current position to prepare, so pausing later is instant.</summary>
+    public int LookAheadCheckpoints { get; set; } = 2;
+
     /// <summary>Max transcript characters sent to the model. Oldest text is dropped first.</summary>
     public int MaxTranscriptChars { get; set; } = 24000;
 

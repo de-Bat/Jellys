@@ -7,7 +7,10 @@ using MediaBrowser.Model.Entities;
 
 namespace Jellyfin.Plugin.Recap.Services;
 
-/// <summary>Builds a plain-text transcript of an item's subtitles up to a playback position.</summary>
+/// <summary>One subtitle cue: when it starts and its plain text.</summary>
+public record Cue(long StartTicks, string Text);
+
+/// <summary>Reads an item's text subtitles as timed plain-text cues.</summary>
 public partial class TranscriptService
 {
     private readonly ISubtitleEncoder _subtitleEncoder;
@@ -17,8 +20,8 @@ public partial class TranscriptService
         _subtitleEncoder = subtitleEncoder;
     }
 
-    /// <summary>Returns the transcript up to <paramref name="positionTicks"/>, or null when the item has no text subtitles.</summary>
-    public async Task<string?> GetTranscriptAsync(BaseItem item, long positionTicks, string? preferredLanguage, CancellationToken cancellationToken)
+    /// <summary>Returns all cues, or null when the item has no text subtitles.</summary>
+    public async Task<IReadOnlyList<Cue>?> GetCuesAsync(BaseItem item, string? preferredLanguage, CancellationToken cancellationToken)
     {
         var stream = PickSubtitleStream(item, preferredLanguage);
         if (stream is null)
@@ -31,7 +34,27 @@ public partial class TranscriptService
             .ConfigureAwait(false);
         using var reader = new StreamReader(srt, Encoding.UTF8);
         var text = await reader.ReadToEndAsync(cancellationToken).ConfigureAwait(false);
-        return SrtToText(text, positionTicks);
+        return ParseSrt(text);
+    }
+
+    /// <summary>Joins the cues starting in [fromTicks, toTicks) into plain text, one cue per line.</summary>
+    public static string Slice(IReadOnlyList<Cue> cues, long fromTicks, long toTicks)
+    {
+        var sb = new StringBuilder();
+        foreach (var cue in cues)
+        {
+            if (cue.StartTicks >= toTicks)
+            {
+                break;
+            }
+
+            if (cue.StartTicks >= fromTicks)
+            {
+                sb.AppendLine(cue.Text);
+            }
+        }
+
+        return sb.ToString();
     }
 
     private static MediaStream? PickSubtitleStream(BaseItem item, string? preferredLanguage)
@@ -53,10 +76,10 @@ public partial class TranscriptService
             .First();
     }
 
-    /// <summary>Strips SRT numbering, timing and markup; keeps only cues that start before the position.</summary>
-    internal static string SrtToText(string srt, long positionTicks)
+    /// <summary>Strips SRT numbering, timing and markup into cues ordered by start time.</summary>
+    internal static List<Cue> ParseSrt(string srt)
     {
-        var sb = new StringBuilder();
+        var cues = new List<Cue>();
         var blocks = BlockSplit().Split(srt.Replace("\r\n", "\n").Trim());
         foreach (var block in blocks)
         {
@@ -67,20 +90,15 @@ public partial class TranscriptService
                 continue;
             }
 
-            if (positionTicks > 0 && startTicks > positionTicks)
-            {
-                break;
-            }
-
-            var cue = string.Join(' ', lines.Skip(timeIdx + 1));
-            cue = Markup().Replace(cue, string.Empty).Trim();
+            var cue = Markup().Replace(string.Join(' ', lines.Skip(timeIdx + 1)), string.Empty).Trim();
             if (cue.Length > 0)
             {
-                sb.AppendLine(cue);
+                cues.Add(new Cue(startTicks, cue));
             }
         }
 
-        return sb.ToString();
+        cues.Sort((a, b) => a.StartTicks.CompareTo(b.StartTicks));
+        return cues;
     }
 
     private static bool TryParseStart(string line, out long ticks)

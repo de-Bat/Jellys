@@ -39,6 +39,22 @@
                     <input id="MaxTranscriptChars" type="number" is="emby-input" min="1000" />
                 </div>
                 <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="CheckpointMinutes">Checkpoint spacing (minutes)</label>
+                    <input id="CheckpointMinutes" type="number" is="emby-input" min="1" />
+                    <div class="fieldDescription">Recaps are stored every N minutes of runtime and reused on resume. Smaller = fresher recap, more LLM calls.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="LookAheadCheckpoints">Look-ahead checkpoints</label>
+                    <input id="LookAheadCheckpoints" type="number" is="emby-input" min="0" />
+                </div>
+                <div class="checkboxContainer checkboxContainer-withDescription">
+                    <label class="emby-checkbox-label">
+                        <input id="PrecomputeEnabled" type="checkbox" is="emby-checkbox" />
+                        <span>Generate recaps in the background</span>
+                    </label>
+                    <div class="fieldDescription checkboxFieldDescription">On playback start and via the "Precompute recaps" scheduled task.</div>
+                </div>
+                <div class="inputContainer">
                     <label class="inputLabel inputLabelUnfocused" for="TimeoutSeconds">Timeout (seconds)</label>
                     <input id="TimeoutSeconds" type="number" is="emby-input" min="5" />
                 </div>
@@ -58,12 +74,13 @@
             var pluginId = '5d0a3b6e-2f0e-4c1a-9a57-7a1c4c0f6e11';
             var page = document.querySelector('#RecapConfigPage');
             var fields = ['BaseUrl', 'ApiKey', 'Model', 'DefaultLanguage', 'SystemPrompt'];
-            var numbers = ['MaxTranscriptChars', 'TimeoutSeconds'];
+            var numbers = ['MaxTranscriptChars', 'TimeoutSeconds', 'CheckpointMinutes', 'LookAheadCheckpoints'];
 
             page.addEventListener('pageshow', function () {
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (c) {
                     page.querySelector('#Provider').value = c.Provider;
+                    page.querySelector('#PrecomputeEnabled').checked = c.PrecomputeEnabled;
                     fields.concat(numbers).forEach(function (f) { page.querySelector('#' + f).value = c[f]; });
                     Dashboard.hideLoadingMsg();
                 });
@@ -74,6 +91,7 @@
                 Dashboard.showLoadingMsg();
                 ApiClient.getPluginConfiguration(pluginId).then(function (c) {
                     c.Provider = parseInt(page.querySelector('#Provider').value, 10);
+                    c.PrecomputeEnabled = page.querySelector('#PrecomputeEnabled').checked;
                     fields.forEach(function (f) { c[f] = page.querySelector('#' + f).value; });
                     numbers.forEach(function (f) { c[f] = parseInt(page.querySelector('#' + f).value, 10); });
                     ApiClient.updatePluginConfiguration(pluginId, c).then(Dashboard.processPluginConfigurationUpdateResult);

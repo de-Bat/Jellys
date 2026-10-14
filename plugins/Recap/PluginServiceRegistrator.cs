@@ -13,6 +13,9 @@ public class PluginServiceRegistrator : IPluginServiceRegistrator
         serviceCollection.AddHttpClient("Recap");
         serviceCollection.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
         serviceCollection.AddSingleton<TranscriptService>();
+        serviceCollection.AddSingleton<RecapStore>();
+        serviceCollection.AddSingleton<RecapQueue>();
         serviceCollection.AddSingleton<RecapService>();
+        serviceCollection.AddHostedService<RecapWorker>();
     }
 }
