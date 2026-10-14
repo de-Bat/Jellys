@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Recap</title>
+</head>
+<body>
+<div id="RecapConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select">
+    <div data-role="content">
+        <div class="content-primary">
+            <form id="RecapConfigForm">
+                <div class="selectContainer">
+                    <label class="selectLabel" for="Provider">LLM provider</label>
+                    <select is="emby-select" id="Provider" class="emby-select-withcolor emby-select">
+                        <option value="0">OpenAI-compatible (OpenAI, Ollama, LM Studio, vLLM, OpenRouter...)</option>
+                        <option value="1">Google Gemini</option>
+                    </select>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="BaseUrl">Base URL</label>
+                    <input id="BaseUrl" type="text" is="emby-input" />
+                    <div class="fieldDescription">OpenAI-compatible: URL ending in /v1. Gemini: leave default.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="ApiKey">API key</label>
+                    <input id="ApiKey" type="password" is="emby-input" />
+                    <div class="fieldDescription">Optional for local servers.</div>
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="Model">Model</label>
+                    <input id="Model" type="text" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="DefaultLanguage">Recap language</label>
+                    <input id="DefaultLanguage" type="text" is="emby-input" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="MaxTranscriptChars">Max transcript characters</label>
+                    <input id="MaxTranscriptChars" type="number" is="emby-input" min="1000" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="TimeoutSeconds">Timeout (seconds)</label>
+                    <input id="TimeoutSeconds" type="number" is="emby-input" min="5" />
+                </div>
+                <div class="inputContainer">
+                    <label class="inputLabel inputLabelUnfocused" for="SystemPrompt">System prompt</label>
+                    <textarea id="SystemPrompt" is="emby-textarea" rows="6" class="emby-textarea"></textarea>
+                    <div class="fieldDescription">{language} is replaced by the recap language.</div>
+                </div>
+                <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                    <span>Save</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    <script type="text/javascript">
+        (function () {
+            var pluginId = '5d0a3b6e-2f0e-4c1a-9a57-7a1c4c0f6e11';
+            var page = document.querySelector('#RecapConfigPage');
+            var fields = ['BaseUrl', 'ApiKey', 'Model', 'DefaultLanguage', 'SystemPrompt'];
+            var numbers = ['MaxTranscriptChars', 'TimeoutSeconds'];
+
+            page.addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    page.querySelector('#Provider').value = c.Provider;
+                    fields.concat(numbers).forEach(function (f) { page.querySelector('#' + f).value = c[f]; });
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            page.querySelector('#RecapConfigForm').addEventListener('submit', function (e) {
+                e.preventDefault();
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(pluginId).then(function (c) {
+                    c.Provider = parseInt(page.querySelector('#Provider').value, 10);
+                    fields.forEach(function (f) { c[f] = page.querySelector('#' + f).value; });
+                    numbers.forEach(function (f) { c[f] = parseInt(page.querySelector('#' + f).value, 10); });
+                    ApiClient.updatePluginConfiguration(pluginId, c).then(Dashboard.processPluginConfigurationUpdateResult);
+                });
+                return false;
+            });
+        })();
+    </script>
+</div>
+</body>
+</html>
